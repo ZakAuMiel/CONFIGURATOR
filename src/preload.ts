@@ -1,2 +1,9 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+import { contextBridge, ipcRenderer } from 'electron';
+
+/**
+ * Expose a minimal, typed-ish API to the renderer.
+ * Renderer will use: window.api.openModelDialog()
+ */
+contextBridge.exposeInMainWorld('api', {
+  openModelDialog: (): Promise<string | null> => ipcRenderer.invoke('open-model-dialog'),
+});
