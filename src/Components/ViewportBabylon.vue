@@ -1,4 +1,3 @@
-<!-- src/Components/ViewportBabylon.vue -->
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import {

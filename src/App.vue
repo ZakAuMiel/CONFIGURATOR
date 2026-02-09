@@ -1,4 +1,3 @@
-<!-- src/App.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
 import ViewportBabylon, { type Shape } from './Components/ViewportBabylon.vue'

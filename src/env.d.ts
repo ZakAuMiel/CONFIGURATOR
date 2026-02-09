@@ -1,4 +1,3 @@
-// src/env.d.ts
 export {}
 
 declare global {
