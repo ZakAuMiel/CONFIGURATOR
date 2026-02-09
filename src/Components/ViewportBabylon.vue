@@ -1,3 +1,4 @@
+<!-- src/Components/ViewportBabylon.vue -->
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import {
@@ -26,37 +27,17 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 let engine: Engine | null = null
 let scene: Scene | null = null
 
-// Primitive mesh created by editor (box/cylinder/...)
 let primitiveMesh: Mesh | null = null
-
-// Material used by primitives (color changes)
 let primitiveMaterial: StandardMaterial | null = null
 
 // Root mesh grouping imported model meshes (so we can dispose cleanly)
 let importedRoot: Mesh | null = null
 
-/**
- * Convert an OS path to (rootUrl, filename) for Babylon loaders.
- * Babylon expects rootUrl + fileName separately (especially in desktop contexts).
- */
-function splitPath(fullPath: string) {
-  const idx = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'))
-  return {
-    root: fullPath.substring(0, idx + 1),
-    file: fullPath.substring(idx + 1),
-  }
-}
-
-/** Apply editor color to the primitive material */
 function applyColor(hex: string) {
   if (!primitiveMaterial) return
   primitiveMaterial.diffuseColor = Color3.FromHexString(hex)
 }
 
-/**
- * Build or rebuild the primitive shape.
- * If an imported model is active, primitives are not shown.
- */
 function applyShape(shape: Shape) {
   if (!scene || !primitiveMaterial) return
   if (importedRoot) return // imported model active: ignore primitive updates
@@ -75,8 +56,11 @@ function applyShape(shape: Shape) {
       primitiveMesh = MeshBuilder.CreateSphere('primitive', { diameter: 1.1, segments: 24 }, scene)
       break
     case 'pyramid':
-      // simple pyramid: cylinder with top diameter 0
-      primitiveMesh = MeshBuilder.CreateCylinder('primitive', { height: 1.3, diameterBottom: 1, diameterTop: 0 }, scene)
+      primitiveMesh = MeshBuilder.CreateCylinder(
+        'primitive',
+        { height: 1.3, diameterBottom: 1, diameterTop: 0 },
+        scene,
+      )
       break
   }
 
@@ -84,14 +68,13 @@ function applyShape(shape: Shape) {
 }
 
 /**
- * Load a glb/gltf model from a local file path (provided by Electron main process).
- * - Disposes previous imported model only (keeps camera/lights/materials).
- * - Disables primitives while a model is active.
+ * Load a model from a URL (typically a Blob URL created in the renderer).
+ * This avoids loading file:/// paths, which are blocked when the renderer is served from http://localhost.
  */
-async function loadModel(fullPath: string) {
+async function loadModel(file: File) {
   if (!scene) return
 
-  // Remove the primitive if any
+  // Remove primitive
   primitiveMesh?.dispose()
   primitiveMesh = null
 
@@ -101,23 +84,16 @@ async function loadModel(fullPath: string) {
     importedRoot = null
   }
 
-  const { root, file } = splitPath(fullPath)
+  const result = await SceneLoader.ImportMeshAsync('', '', file, scene)
 
-  // Import meshes and group them under a root so we can dispose later
-  const result = await SceneLoader.ImportMeshAsync('', root, file, scene)
   importedRoot = new Mesh('__importedRoot__', scene)
   result.meshes.forEach((m) => {
-    // Skip the dummy root Babylon sometimes returns
     if (m === importedRoot) return
     m.parent = importedRoot!
   })
 }
 
-/**
- * Go back to primitives mode:
- * - Dispose imported model (if any)
- * - Recreate primitives based on current props
- */
+
 function resetToPrimitives() {
   if (!scene) return
 
@@ -138,17 +114,13 @@ onMounted(() => {
   engine = new Engine(canvas.value, true, { preserveDrawingBuffer: true, stencil: true })
   scene = new Scene(engine)
 
-  // Camera: simple editor-like orbit camera
   const camera = new ArcRotateCamera('camera', Math.PI / 2, Math.PI / 3, 3, Vector3.Zero(), scene)
   camera.attachControl(canvas.value, true)
 
-  // Lighting: basic hemisphere light for quick readability
   new HemisphericLight('light', new Vector3(0, 1, 0), scene)
 
-  // Primitive material used for editor primitives
   primitiveMaterial = new StandardMaterial('primitiveMat', scene)
 
-  // Init from props
   applyColor(props.color)
   applyShape(props.shape)
 
@@ -156,7 +128,6 @@ onMounted(() => {
   window.addEventListener('resize', () => engine?.resize())
 })
 
-// When props change, update primitives (unless imported model is active)
 watch(() => props.color, (v) => applyColor(v))
 watch(() => props.shape, (v) => applyShape(v))
 

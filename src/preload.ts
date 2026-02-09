@@ -1,9 +1,11 @@
-import { contextBridge, ipcRenderer } from 'electron';
+// src/preload.ts
+import { contextBridge, ipcRenderer } from 'electron'
 
 /**
- * Expose a minimal, typed-ish API to the renderer.
- * Renderer will use: window.api.openModelDialog()
+ * Secure bridge API exposed to the renderer.
+ * Renderer uses: window.api.openModelDialog()
  */
 contextBridge.exposeInMainWorld('api', {
-  openModelDialog: (): Promise<string | null> => ipcRenderer.invoke('open-model-dialog'),
-});
+  openModelDialog: (): Promise<{ name: string; data: Uint8Array } | null> =>
+    ipcRenderer.invoke('open-model-dialog'),
+})
