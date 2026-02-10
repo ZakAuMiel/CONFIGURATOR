@@ -1,356 +1,180 @@
-# 📦 Electron Babylon Configurator
+# CONFIGURATOR
 
-Mini **configurateur 3D desktop** développé avec **Electron**, **Vue 3**, **TypeScript** et **BabylonJS**.  
-Le projet met l’accent sur **l’architecture**, la **séparation des responsabilités** et l’**intégration desktop sécurisée** (IPC).
+## 🎯 Objectif du projet
 
-Ce POC a été conçu pour démontrer :
+**Configurator** est un projet expérimental développé en **Electron + Vue 3**, avec un viewport 3D basé sur **BabylonJS**.
 
-- la compréhension d’Electron (main / preload / renderer)
+L’objectif n’est pas de produire un outil fini ou industriel, mais plutôt :
 
-- l’intégration d’un moteur 3D (BabylonJS)
+* d’explorer la création d’une **application desktop cross‑platform**
+* de mettre en place une **architecture Electron propre et sécurisée**
+* de manipuler un **éditeur visuel / viewport 3D**, dans l’esprit des logiciels métiers que l’on retrouve dans certaines entreprises industrielles.
 
-- une architecture UI propre et maintenable
+Le choix de BabylonJS est volontaire :
 
-- une vraie fonctionnalité desktop (import de fichiers via dialog système)
+* parce que c’est **fun** à utiliser
+* parce que le moteur est très adapté aux **éditeurs**, outils internes et visualisations techniques
+* et parce que certaines entreprises comme **Caldera** développent des logiciels avec ce type d’approche (éditeurs, outils internes, interfaces techniques).
 
-----------
+Ce projet est donc une tentative de faire *« un truc du style »*, sans prétention autre que l’apprentissage et l’expérimentation tout en m'amusant.
 
-## 🎯 Objectifs du projet
+---
 
-- Afficher un viewport 3D interactif
+## 🧱 Architecture générale
 
-- Permettre l’édition d’objets simples (formes primitives, couleur)
+L’application suit une séparation stricte des responsabilités, recommandée pour Electron.
 
-- Importer un modèle 3D (`.glb` / `.gltf`) depuis le système de fichiers
+### 1. Main process (Electron)
 
-- Garder une architecture claire, sécurisée et scalable
+Responsabilités :
 
-----------
+* création de la fenêtre principale
+* gestion du cycle de vie de l’application
+* gestion des dialogues natifs (open/save)
+* accès au système de fichiers
+* gestion de la sécurité (CSP, sandbox, isolation)
 
-## 🧱 Stack technique
+📁 Fichiers principaux :
 
-- **Electron** (Electron Forge + Webpack)
+* `src/index.ts`
 
-- **Vue 3** (`<script setup>`)
+---
 
-- **TypeScript**
+### 2. Preload (bridge sécurisé)
 
-- **BabylonJS** (`@babylonjs/core`, `@babylonjs/loaders`)
+Le preload est le **seul point de contact** entre le renderer et le monde Node/Electron.
 
-- **IPC sécurisé** (`contextIsolation`, `preload`)
+Il expose une API contrôlée via `contextBridge` :
 
-----------
+* pas d’accès direct à Node depuis Vue
+* communication uniquement via IPC typé
 
-## 🗂️ Architecture globale
+📁 Fichier principal :
 
-`src/
-├─ index.ts # Main process (Electron) ├─ preload.ts # Bridge sécurisé IPC ├─ env.d.ts # Types globaux (Vue + window.api) │
-├─ App.vue # Orchestrateur (state global) │
-├─ components/
-│   ├─ ViewportBabylon.vue # Rendu 3D BabylonJS │   └─ EditorPanel.vue # UI (panneau d’édition)`
+* `src/preload.ts`
 
-### Principe clé
+---
 
-👉 **Le renderer (Vue) n’accède jamais directement au système**  
-👉 Toute interaction OS passe par le **main process via IPC**
+### 3. Renderer (Vue 3)
 
-----------
+Responsabilités :
 
-## 🔐 Sécurité Electron (IPC)
+* interface utilisateur
+* logique UI
+* viewport 3D BabylonJS
+* édition / interaction avec la scène
 
-- Le **renderer** ne peut pas :
+Aucun accès direct au système :
 
-  - accéder au filesystem
+* tout passe par l’API exposée dans le preload
 
-  - ouvrir de dialog système
+📁 Exemples de fichiers :
 
-- Le **preload** expose une API minimale :
+* `src/renderer/App.vue`
+* `src/renderer/components/*`
 
-    `window.api.openModelDialog()`
+---
 
-- Le **main process** gère :
+## 🧠 BabylonJS & viewport 3D
 
-  - `dialog.showOpenDialog`
+BabylonJS est utilisé pour :
 
-  - la logique système
+* afficher une scène 3D
+* manipuler des objets simples
+* tester l’import de modèles 3D
+* poser les bases d’un futur éditeur visuel
 
-➡️ Architecture conforme aux bonnes pratiques Electron.
+Le viewport est pensé comme un **outil**, pas comme un jeu :
 
-----------
+* caméra contrôlée
+* scène lisible
+* logique orientée édition
 
-## 🧠 Gestion de l’état (UI)
+---
 
-- L’état global (`shape`, `color`, `hasImportedModel`) est centralisé dans **`App.vue`**
+## 🔐 Sécurité & contraintes Electron
 
-- Les composants enfants :
+Le projet a volontairement été confronté à des problématiques réelles d’Electron, notamment :
 
-  - **reçoivent des props**
+### CSP (Content Security Policy)
 
-  - **émettent des événements**
+* gestion des restrictions en **production**
+* assouplissement contrôlé en **développement**
+* problématiques liées aux ressources `blob:` et `data:`
 
-- Flux de données **unidirectionnel** :
+Ces contraintes ont posé des difficultés, notamment pour :
 
-  - données ↓
+* l’affichage de modèles 3D
+* le chargement de ressources BabylonJS
 
-  - événements ↑
+Elles ont été volontairement affrontées pour mieux comprendre :
 
-### Avantages
+* les limites d’Electron
+* les bonnes pratiques de sécurité
+* les compromis nécessaires entre sécurité et fonctionnalités
 
-- pas de couplage UI ↔ moteur 3D
+---
 
-- lisible et testable
+## 🧪 État du projet
 
-- facile à faire évoluer (presets, undo/redo, save/load…)
+* Projet **en cours / expérimental**
+* Certaines parties sont volontairement perfectibles
+* Le but principal reste l’apprentissage et la compréhension
 
-----------
+Ce repository sert autant de **POC** que de **terrain d’expérimentation**.
 
-## 🎛️ EditorPanel.vue (UI)
+---
 
-Rôle :
+## 🛠️ Stack technique
 
-- afficher les contrôles (forme, couleur, import)
+* Electron
+* Vue 3
+* TypeScript
+* BabylonJS
+* Electron Forge
+* Webpack
 
-- **ne contient aucune logique 3D**
+---
 
-- émet uniquement des intentions utilisateur
+## 🚀 Installation & démarrage en local
 
-Exemples d’événements :
+### Prérequis
 
-- `update:shape`
+* **Node.js** (version LTS recommandée)
+* **Git**
 
-- `update:color`
+### Installation
 
-- `import-model`
+```bash
+git clone git@github.com:ZakAuMiel/CONFIGURATOR.git
+cd CONFIGURATOR
+npm install
+```
 
-- `reset-to-primitive`
+### Lancer en développement
 
-----------
+```bash
+npm run start
+```
 
-## 🎥 ViewportBabylon.vue (3D)
+### Build / packaging
 
-Rôle :
+```bash
+npm run package
+npm run make
+```
 
-- initialiser BabylonJS (engine, scene, caméra, lumière)
+> Remarque : en **développement**, le projet assouplit la **CSP** pour autoriser certaines sources nécessaires au chargement de ressources 3D (ex: `blob:` / `data:`). En **production**, la CSP est plus stricte et le chargement se fait dans un contexte packagé.
 
-- créer des **formes primitives**
+---
 
-- charger des modèles 3D importés
+## 📌 Remarques finales
 
-- exposer une API minimale au parent :
+Ce projet n’a pas vocation à être un produit fini.
+Il reflète une démarche de :
 
-    `loadModel(path: string) resetToPrimitives()`
+* montée en compétences
+* exploration technique
+* compréhension des architectures desktop modernes
 
-### Import de modèles 3D
-
-- Le chemin du fichier vient du **main process**
-
-- Babylon nécessite :
-
-    `rootUrl + fileName`
-
-- Le chemin système est donc découpé avant chargement
-
-----------
-
-## 📥 Import de modèles 3D
-
-Formats supportés :
-
-- `.glb`
-
-- `.gltf`
-
-Processus :
-
-1. L’utilisateur clique sur **Import**
-
-2. `EditorPanel` émet un événement
-
-3. `App.vue` appelle `window.api.openModelDialog()`
-
-4. Le main process ouvre une dialog système
-
-5. Le chemin est renvoyé au renderer
-
-6. Babylon charge le modèle
-
-----------
-
-## ▶️ Lancer le projet
-
-`npm install
-npm run start`
-
-----------
-
-## 🚀 Évolutions possibles
-
-- Sauvegarde / chargement de configuration (JSON)
-
-- Presets de formes / matériaux
-
-- Import de textures
-
-- Undo / Redo
-
-- Inspector Babylon (mode debug)
-
-- Packaging Windows / macOS
-
-----------
-
-## 📌 Note
-
-Ce projet est un **POC technique**, orienté démonstration d’architecture et d’intégration Electron + 3D, et non un produit final.
-
-----------
-
-----------
-
-# 📦 Electron Babylon Configurator (EN)
-
-A small **desktop 3D configurator** built with **Electron**, **Vue 3**, **TypeScript**, and **BabylonJS**.  
-This project focuses on **architecture**, **clear separation of concerns**, and **secure desktop integration** using IPC.
-
-----------
-
-## 🎯 Project Goals
-
-- Display an interactive 3D viewport
-
-- Edit simple primitives (shape, color)
-
-- Import a 3D model (`.glb` / `.gltf`) from the local filesystem
-
-- Demonstrate clean, scalable Electron architecture
-
-----------
-
-## 🧱 Tech Stack
-
-- **Electron** (Electron Forge + Webpack)
-
-- **Vue 3** (`<script setup>`)
-
-- **TypeScript**
-
-- **BabylonJS**
-
-- **Secure IPC** (`preload`, `contextIsolation`)
-
-----------
-
-## 🗂️ Global Architecture
-
-`src/
-├─ index.ts # Electron main process ├─ preload.ts # Secure IPC bridge ├─ env.d.ts # Global types │
-├─ App.vue # State orchestrator │
-├─ components/
-│   ├─ ViewportBabylon.vue # BabylonJS renderer │   └─ EditorPanel.vue # Editor UI`
-
-----------
-
-## 🔐 Electron Security Model
-
-- The **renderer** never accesses system APIs directly
-
-- All OS interactions go through **IPC**
-
-- The preload exposes a minimal API:
-
-    `window.api.openModelDialog()`
-
-----------
-
-## 🧠 State Management
-
-- Global state lives in **`App.vue`**
-
-- Child components:
-
-  - receive data via props
-
-  - emit events upward
-
-- **Unidirectional data flow** (Vue best practice)
-
-----------
-
-## 🎛️ EditorPanel.vue
-
-Role:
-
-- Display editor controls
-
-- Emit user intentions only
-
-- No rendering or Babylon logic
-
-----------
-
-## 🎥 ViewportBabylon.vue
-
-Role:
-
-- Initialize BabylonJS engine and scene
-
-- Render primitives
-
-- Load imported 3D models
-
-- Expose minimal methods to parent:
-
-    `loadModel(path) resetToPrimitives()`
-
-----------
-
-## 📥 3D Model Import
-
-Supported formats:
-
-- `.glb`
-
-- `.gltf`
-
-Flow:
-
-1. User clicks **Import**
-
-2. Renderer requests file via IPC
-
-3. Main process opens native dialog
-
-4. File path is returned
-
-5. Babylon loads the model
-
-----------
-
-## ▶️ Run the project
-
-`npm install
-npm run start`
-
-----------
-
-## 🚀 Possible Improvements
-
-- Save / load configurations
-
-- Material presets
-
-- Texture import
-
-- Undo / redo
-
-- Babylon inspector
-
-- App packaging
-
-----------
-
-## 📌 Note
-
-This is a **technical proof of concept**, designed to demonstrate Electron + Vue + BabylonJS integration and clean architecture practices.
-
-Made by **Zakaria Oubbéa** with **💗**
+Toute amélioration, refactorisation ou itération future se fera dans cette logique.
