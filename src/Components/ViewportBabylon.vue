@@ -21,6 +21,15 @@ const props = defineProps<{
   color: string
 }>()
 
+const emit = defineEmits<{
+  (e: 'mesh-selected', payload: {
+    name: string
+    vertices: number
+    material: string
+  } | null): void
+}>()
+
+
 const canvas = ref<HTMLCanvasElement | null>(null)
 
 let engine: Engine | null = null
@@ -125,6 +134,24 @@ onMounted(() => {
 
   engine.runRenderLoop(() => scene?.render())
   window.addEventListener('resize', () => engine?.resize())
+
+  scene.onPointerObservable.add((pointerInfo) => {
+  if (pointerInfo.type === 1) { // POINTERPICK
+    const pick = pointerInfo.pickInfo
+    if (pick?.hit && pick.pickedMesh) {
+      const mesh = pick.pickedMesh
+
+      emit('mesh-selected', {
+        name: mesh.name,
+        vertices: mesh.getTotalVertices?.() ?? 0,
+        material: mesh.material?.name ?? 'None'
+      })
+    } else {
+      emit('mesh-selected', null)
+    }
+  }
+})
+
 })
 
 watch(() => props.color, (v) => applyColor(v))

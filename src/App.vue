@@ -16,6 +16,12 @@ const hasImportedModel = ref(false)
 // Keep track of the last Blob URL to avoid leaking memory when re-importing.
 let lastBlobUrl: string | null = null
 
+const selectedMesh= ref<{
+  name: string
+  vertices: number
+  material: string
+} | null>(null)
+
 /**
  * Import a GLB from the OS, then load it in Babylon.
  *
@@ -57,7 +63,7 @@ function onResetToPrimitive() {
 <template>
   <div class="min-h-screen p-8 space-y-6">
     <div class="h-[70vh] rounded-2xl overflow-hidden bg-slate-900">
-      <ViewportBabylon ref="viewport" :shape="shape" :color="color" />
+      <ViewportBabylon ref="viewport" :shape="shape" :color="color" @mesh-selected="selectedMesh = $event" />
     </div>
 
     <EditorPanel
@@ -68,6 +74,7 @@ function onResetToPrimitive() {
       @update:color="color = $event"
       @import-model="onImportModel"
       @reset-to-primitive="onResetToPrimitive"
+      :selected-mesh="selectedMesh"
     />
   </div>
 </template>

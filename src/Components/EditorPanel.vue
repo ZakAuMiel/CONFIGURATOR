@@ -5,6 +5,11 @@ const props = defineProps<{
   shape: Shape
   color: string
   hasImportedModel?: boolean
+  selectedMesh?: {
+    name: string
+    vertices: number
+    material: string
+  } | null
 }>()
 
 /**
@@ -51,6 +56,14 @@ const emit = defineEmits<{
       />
       <span class="text-sm text-gray-500">{{ props.color }}</span>
     </div>
+
+    <div v-if="props.selectedMesh" class="mt-4 border-t pt-3 text-sm">
+  <div class="font-semibold">Selected Mesh</div>
+  <div>Name: {{ props.selectedMesh.name }}</div>
+  <div>Vertices: {{ props.selectedMesh.vertices }}</div>
+  <div>Material: {{ props.selectedMesh.material }}</div>
+</div>
+
 
     <div class="flex-1"></div>
 
