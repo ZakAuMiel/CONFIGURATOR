@@ -38,6 +38,8 @@ let scene: Scene | null = null
 let primitiveMesh: Mesh | null = null
 let primitiveMaterial: StandardMaterial | null = null
 
+let currentSelectedMesh: Mesh | null = null
+
 // Root mesh grouping imported model meshes (so we can dispose cleanly)
 let importedRoot: Mesh | null = null
 
@@ -122,35 +124,59 @@ onMounted(() => {
   engine = new Engine(canvas.value, true, { preserveDrawingBuffer: true, stencil: true })
   scene = new Scene(engine)
 
+  // Basic camera and light setup
   const camera = new ArcRotateCamera('camera', Math.PI / 2, Math.PI / 3, 3, Vector3.Zero(), scene)
   camera.attachControl(canvas.value, true)
 
   new HemisphericLight('light', new Vector3(0, 1, 0), scene)
 
+  // Create initial primitive material (color/shape will be applied in watchers)
   primitiveMaterial = new StandardMaterial('primitiveMat', scene)
 
   applyColor(props.color)
   applyShape(props.shape)
 
+  // Start render loop
   engine.runRenderLoop(() => scene?.render())
   window.addEventListener('resize', () => engine?.resize())
 
-  scene.onPointerObservable.add((pointerInfo) => {
-  if (pointerInfo.type === 1) { // POINTERPICK
-    const pick = pointerInfo.pickInfo
-    if (pick?.hit && pick.pickedMesh) {
-      const mesh = pick.pickedMesh
+  // Pointer picking to select meshes and emit info to parent
+scene.onPointerObservable.add((pointerInfo) => {
+  if (pointerInfo.type !== 1) return // POINTERPICK
 
-      emit('mesh-selected', {
-        name: mesh.name,
-        vertices: mesh.getTotalVertices?.() ?? 0,
-        material: mesh.material?.name ?? 'None'
-      })
-    } else {
-      emit('mesh-selected', null)
+  const pick = pointerInfo.pickInfo
+
+  // Si on clique dans le vide
+  if (!pick?.hit || !pick.pickedMesh) {
+    if (currentSelectedMesh) {
+      currentSelectedMesh.renderOutline = false
+      currentSelectedMesh = null
     }
+
+    emit('mesh-selected', null)
+    return
   }
+
+  const mesh = pick.pickedMesh as Mesh
+
+  // Retirer outline précédent
+  if (currentSelectedMesh) {
+    currentSelectedMesh.renderOutline = false
+  }
+
+  // Appliquer outline au nouveau mesh
+  currentSelectedMesh = mesh
+  mesh.outlineColor = Color3.White()
+  mesh.outlineWidth = 0.05
+  mesh.renderOutline = true
+
+  emit('mesh-selected', {
+    name: mesh.name,
+    vertices: mesh.getTotalVertices?.() ?? 0,
+    material: mesh.material?.name ?? 'None'
+  })
 })
+
 
 })
 
